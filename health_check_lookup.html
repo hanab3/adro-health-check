@@ -639,7 +639,7 @@ J/40w+FnIBgBAIDCvnAWePzvY0+9b3r8s//Ybvwv7pfgef4/bKzEQ7ELno0AAAAASUVORK5CYII=" al
   // ============================================================
   // ✏️ [필수] Google Apps Script 배포 URL을 입력하세요
   // ============================================================
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1Fv9KAqPQEiiBYQhNpTfWhcK282w31GjO_TqcJBMkPxDlXygofbd7CayRxb-idanb/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxYDSXpNHh1OMc5943VESuZ7cad3m0JTxSqVM732kdf3GNU5A4hgZxtP08Adxc9bhf/exec";
 
   // ============================================================
   // ✏️ [선택] 결과 화면 메시지 수정
@@ -681,19 +681,16 @@ J/40w+FnIBgBAIDCvnAWePzvY0+9b3r8s//Ybvwv7pfgef4/bKzEQ7ELno0AAAAASUVORK5CYII=" al
     submitBtn.textContent = "조회 중...";
     showLoading();
 
-    try {
-      const url = APPS_SCRIPT_URL + "?name=" + encodeURIComponent(name) + "&dob=" + encodeURIComponent(dob);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("서버 응답 오류");
-      const data = await res.json();
+    jsonp(APPS_SCRIPT_URL, { name: name, dob: dob }, function(data) {
       const status = ["eligible","not_eligible","not_found"].includes(data.status) ? data.status : "error";
       showResult(status, name);
-    } catch {
-      showResult("error", name);
-    } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "대상자 여부 조회하기";
-    }
+    }, function() {
+      showResult("error", name);
+      submitBtn.disabled = false;
+      submitBtn.textContent = "대상자 여부 조회하기";
+    });
   });
 
   function showLoading() {
@@ -720,6 +717,28 @@ J/40w+FnIBgBAIDCvnAWePzvY0+9b3r8s//Ybvwv7pfgef4/bKzEQ7ELno0AAAAASUVORK5CYII=" al
 
   function esc(s) {
     return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // CORS 우회를 위한 JSONP 함수
+  function jsonp(url, params, onSuccess, onError) {
+    const cbName = "cb_" + Date.now();
+    const script = document.createElement("script");
+    let query = "?callback=" + cbName;
+    Object.keys(params).forEach(function(k) {
+      query += "&" + k + "=" + encodeURIComponent(params[k]);
+    });
+    script.src = url + query;
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.body.removeChild(script);
+      onSuccess(data);
+    };
+    script.onerror = function() {
+      delete window[cbName];
+      document.body.removeChild(script);
+      onError();
+    };
+    document.body.appendChild(script);
   }
 </script>
 </body>
